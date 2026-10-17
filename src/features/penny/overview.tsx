@@ -38,6 +38,28 @@ export function Overview() {
     .slice(-4)
     .reverse();
   const rate = f.income ? Math.max(0, Math.round((f.unspent / f.income) * 100)) : 0;
+  const spendingGroups = [
+    "Food & groceries",
+    "Rent",
+    "Daily travel",
+    "College fees",
+    "Everything else",
+  ];
+  const categoryTotals = spendingGroups.map((cat, i) =>
+    account.entries
+      .filter(
+        (e) =>
+          e.kind === "expense" &&
+          e.date.startsWith("2026-10") &&
+          (i === 4 ? !spendingGroups.slice(0, 4).includes(e.category) : e.category === cat),
+      )
+      .reduce((sum, e) => sum + e.amount, 0),
+  );
+  const stops = categoryTotals.map(
+    (_, i) =>
+      (categoryTotals.slice(0, i + 1).reduce((sum, v) => sum + v, 0) / Math.max(1, f.expenses)) *
+      100,
+  );
   return (
     <>
       <PageHeading
@@ -147,7 +169,10 @@ export function Overview() {
               className="donut"
               style={
                 {
-                  "--spent": `${f.income ? Math.min(100, (f.expenses / f.income) * 100) : 0}%`,
+                  "--s0": `${stops[0]}%`,
+                  "--s1": `${stops[1]}%`,
+                  "--s2": `${stops[2]}%`,
+                  "--s3": `${stops[3]}%`,
                 } as React.CSSProperties
               }
             >

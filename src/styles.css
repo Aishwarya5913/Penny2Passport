@@ -560,11 +560,11 @@ hr {
   height: 155px;
   border-radius: 50%;
   background: conic-gradient(
-    var(--mint) 0 30%,
-    var(--lavender) 30% 50%,
-    var(--yellow) 50% 64%,
-    var(--coral) 64% 76%,
-    var(--secondary) 76% 100%
+    var(--mint) 0 var(--s0),
+    var(--lavender) var(--s0) var(--s1),
+    var(--yellow) var(--s1) var(--s2),
+    var(--coral) var(--s2) var(--s3),
+    var(--secondary) var(--s3) 100%
   );
   display: flex;
   align-items: center;
