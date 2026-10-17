@@ -117,7 +117,13 @@ export function TripDetail({
     let active = true;
     forecast(d.lat, d.lon)
       .then((w) => {
-        if (active) setWeather(w);
+        if (active) {
+          setWeather(w);
+          const index = w.daily.time.indexOf(trip.start);
+          if (isNew && index >= 0) {
+            setDraft((previous) => ({ ...previous, checklist: packing(previous.days, d.type, w.daily.precipitation_probability_max[index] ?? 0, w.daily.temperature_2m_max[index] ?? 24, account.profile.packingPreference) }));
+          }
+        }
       })
       .catch((e) => {
         if (active) setError(e instanceof Error ? e.message : "Forecast not available");
@@ -125,7 +131,7 @@ export function TripDetail({
     return () => {
       active = false;
     };
-  }, [d]);
+  }, [d, trip.start, isNew, account.profile.packingPreference]);
   const idx = weather?.daily.time.indexOf(draft.start) ?? -1;
   const temp = idx >= 0 && weather ? (weather.daily.temperature_2m_max[idx] ?? 24) : 24;
   const rain = idx >= 0 && weather ? (weather.daily.precipitation_probability_max[idx] ?? 0) : 0;
@@ -184,6 +190,7 @@ export function TripDetail({
           />
         </Field>
       </div>
+      {draft.costs && <section className="budget-lines"><h3>Indicative itemized group estimate</h3>{Object.entries(draft.costs).map(([label, value]) => <Field key={label} label={`${label} (₹)`}><input type="number" min="0" value={value} onChange={e => { const costs = { ...draft.costs, [label]: Math.max(0, Number(e.target.value)) }; setDraft({ ...draft, costs, budget: Object.values(costs).reduce((sum, cost) => sum + cost, 0) }); }}/></Field>)}<p className="muted estimate-note">Round-trip transport; shared rooms for two guests; three meals/day at ₹300/person; local transport shared; 10% contingency. Edit any estimate to update the group budget. Confirm everyone’s contribution before booking.</p></section>}
       <p className="positive">
         Remaining group money: {money(draft.budget - draft.actual)} · Estimated{" "}
         {money(Math.ceil(draft.budget / draft.travellers))} per person if equally split.
@@ -218,14 +225,14 @@ export function TripDetail({
           <strong>
             {weather
               ? `${weather.current.temperature_2m}°C · ${conditions(weather.current.weather_code)}`
-              : "Checking destination weather…"}
+              : error ? "Forecast unavailable" : "Checking destination weather…"}
           </strong>
           <p>
             {weather
               ? `Observed ${weather.current.time.replace("T", " ")} · Forecast ${weather.daily.time[0]}–${weather.daily.time.at(-1)}`
               : error || "Open-Meteo forecast"}
           </p>
-          {idx < 0 && (
+          {weather && idx < 0 && (
             <p className="muted">
               Your departure is outside the available forecast. Best season: {d?.season}. Packing is
               a general list until a dated forecast is available.

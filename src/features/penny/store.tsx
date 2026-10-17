@@ -36,9 +36,8 @@ export function PennyProvider({ children }: { children: ReactNode }) {
     [ready, setReady] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const app = useRef<FirebaseApp | null>(null),
-    currentAccount = useRef(account);
-  currentAccount.current = account;
+  const app = useRef<FirebaseApp | null>(null);
+  const savingRef = useRef(false);
   const getConfig = useServerFn(getFirebaseWebConfig);
   useEffect(() => {
     let active = true;
@@ -114,24 +113,26 @@ export function PennyProvider({ children }: { children: ReactNode }) {
       .catch(() => {});
   }, [account.profile.analytics]);
   async function update(a: Account) {
-    if (busy) throw new Error("Please wait until your records finish loading.");
+    if (busy || savingRef.current) throw new Error("Please wait until your records finish loading.");
     if (demo) {
       setAccount(a);
       return;
     }
     if (!app.current || !user) throw new Error("Please sign in first.");
+    savingRef.current = true;
     setBusy(true);
     try {
-      await setDoc(doc(getFirestore(app.current), "users", user.uid), {
+      await withDeadline(setDoc(doc(getFirestore(app.current), "users", user.uid), {
         account: a,
         updatedAt: serverTimestamp(),
-      });
+      }));
       setAccount(a);
     } catch {
       throw new Error(
         "Changes were not saved. Check your connection and Firestore security rules.",
       );
     } finally {
+      savingRef.current = false;
       setBusy(false);
     }
   }
@@ -150,10 +151,10 @@ export function PennyProvider({ children }: { children: ReactNode }) {
         const data = emptyAccount();
         data.profile.name = name;
         data.profile.email = email;
-        await setDoc(doc(getFirestore(app.current), "users", result.user.uid), {
+        await withDeadline(setDoc(doc(getFirestore(app.current), "users", result.user.uid), {
           account: data,
           updatedAt: serverTimestamp(),
-        });
+        }));
       } else await signInWithEmailAndPassword(auth, email, password);
     } catch (e) {
       const code = e && typeof e === "object" && "code" in e ? String(e.code) : "";
@@ -168,7 +169,7 @@ export function PennyProvider({ children }: { children: ReactNode }) {
                 ? "The saved Firebase web API key is invalid."
                 : code.includes("permission-denied")
                   ? "Account created, but records could not be saved. Publish the supplied Firestore rules."
-                  : "Could not complete the request. Check your connection and Firebase settings.",
+                  : code === "save-timeout" ? "Your Firebase account is ready, but saving records timed out. Check that Firestore exists and its access rules are published." : "Could not complete the request. Check your connection and Firebase settings.",
       );
     } finally {
       setBusy(false);
@@ -203,6 +204,12 @@ export function PennyProvider({ children }: { children: ReactNode }) {
       {children}
     </Context.Provider>
   );
+}
+function withDeadline<T>(promise: Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject({ code: "save-timeout" }), 12000);
+    promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+  });
 }
 export function usePenny() {
   const value = useContext(Context);

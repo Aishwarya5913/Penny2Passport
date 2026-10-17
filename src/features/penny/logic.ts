@@ -33,6 +33,7 @@ export type Trip = {
   checklist: PackingItem[];
   notes: string;
   itinerary: string[];
+  costs?: Record<string, number>;
 };
 export type Profile = {
   name: string;

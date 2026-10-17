@@ -102,9 +102,10 @@ export function DiscoverPage() {
       days,
       travellers,
       budget: cost.total,
+      costs: cost.rows,
       actual: 0,
       checklist: packing(days, d.type, 0, 24, p.packingPreference),
-      notes: `From ${city}. ${transport}. ${scope}. Indicative prices: 2 guests/room, ₹300 food per person/day, 10% contingency. Approximate road distance: ${Math.ceil(km * 1.25)} km.`,
+      notes: `From ${city}. ${transport}. ${scope}; equal splitting is an estimate, other travellers' contributions must be confirmed. Indicative prices: 2 guests/room, ₹300 food per person/day, 10% contingency. Approximate road distance: ${Math.ceil(km * 1.25)} km.`,
       itinerary: Array.from({ length: days }, (_, i) =>
         i === 0
           ? `Arrive in ${d.name}, settle in and explore local sights.`
