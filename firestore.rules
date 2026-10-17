@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function amount(value) { return value is number && value >= 0 && value <= 100000000; }
+    function validAccount(a) {
+      return a.keys().hasOnly(['profile', 'entries', 'trips'])
+        && a.profile is map && a.entries is list && a.trips is list
+        && a.entries.size() <= 1500 && a.trips.size() <= 100
+        && a.profile.keys().hasOnly(['name','email','homeCity','homeState','savings','reserve','bills','willingness','packingPreference','analytics'])
+        && a.profile.name is string && a.profile.name.size() <= 100
+        && a.profile.email is string && a.profile.homeCity is string && a.profile.homeState is string
+        && a.profile.packingPreference is string && a.profile.analytics is bool
+        && amount(a.profile.savings) && amount(a.profile.reserve)
+        && amount(a.profile.bills) && amount(a.profile.willingness);
+    }
+    match /users/{uid} {
+      allow read, delete: if owner(uid);
+      allow create, update: if owner(uid)
+        && request.resource.data.keys().hasOnly(['account','updatedAt'])
+        && request.resource.data.updatedAt == request.time
+        && validAccount(request.resource.data.account);
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

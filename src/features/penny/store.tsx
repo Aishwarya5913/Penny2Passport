@@ -14,8 +14,8 @@ export function PennyProvider({children}:{children:ReactNode}) {
  const getConfig=useServerFn(getFirebaseWebConfig);
  useEffect(()=>{ let active=true; let stopAuth:(()=>void)|undefined; let stopData:(()=>void)|undefined;
   getConfig().then(result=>{if(!active)return;if(!result.config){setError(result.error ?? 'Firebase configuration is unavailable.');setReady(true);return;}
-   app.current=getApps()[0] ?? initializeApp(result.config);const auth=getAuth(app.current);
-   stopAuth=onAuthStateChanged(auth,u=>{stopData?.();setUser(u);if(u){setDemo(false);setAccount(emptyAccount());setBusy(true);const db=getFirestore(app.current ?? undefined);stopData=onSnapshot(doc(db,'users',u.uid),snapshot=>{if(!active)return;setAccount(snapshot.exists()?snapshot.data().account as Account:{...emptyAccount(),profile:{...emptyAccount().profile,name:u.displayName ?? 'Student',email:u.email ?? ''}});setBusy(false);},()=>{setBusy(false);setError('Your records could not be loaded. Check Firestore is created and the supplied security rules are published.');});}else{setDemo(true);setAccount(demoAccount());}setReady(true);});
+   app.current=getApps()[0] ?? initializeApp(result.config);const firebaseApp=app.current;const auth=getAuth(firebaseApp);
+   stopAuth=onAuthStateChanged(auth,u=>{stopData?.();setUser(u);if(u){setDemo(false);setAccount(emptyAccount());setBusy(true);const db=getFirestore(firebaseApp);stopData=onSnapshot(doc(db,'users',u.uid),snapshot=>{if(!active)return;setAccount(snapshot.exists()?snapshot.data()['account'] as Account:{...emptyAccount(),profile:{...emptyAccount().profile,name:u.displayName ?? 'Student',email:u.email ?? ''}});setBusy(false);},()=>{setBusy(false);setError('Your records could not be loaded. Check Firestore is created and the supplied security rules are published.');});}else{setDemo(true);setAccount(demoAccount());}setReady(true);});
   }).catch(()=>{setError('Firebase settings could not be loaded. Please refresh and try again.');setReady(true);});
   return()=>{active=false;stopAuth?.();stopData?.();};
  },[getConfig]);
