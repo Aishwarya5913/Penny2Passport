@@ -1,12 +1,248 @@
-import { useState, type FormEvent } from 'react';
-import { Plus, Pencil, Trash2, ArrowUpRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { usePenny } from './store';
-import { categories, finance, money, type Entry } from './logic';
-import { Modal, Field, PageHeading, IconAction, Empty } from './ui';
-export function EntryModal({close,entry}:{close:()=>void;entry?:Entry|undefined}){const {account,update,busy}=usePenny();const [kind,setKind]=useState(entry?.kind??'expense'),[error,setError]=useState('');async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const fd=new FormData(e.currentTarget);const amount=Number(fd.get('amount'));if(!Number.isFinite(amount)||amount<=0){setError('Enter an amount greater than zero.');return;}const item:Entry={id:entry?.id??crypto.randomUUID(),amount,category:String(fd.get('category')),description:String(fd.get('description')),date:String(fd.get('date')),recurring:fd.get('recurring')==='on',kind};try{await update({...account,entries:entry?account.entries.map(x=>x.id===entry.id?item:x):[...account.entries,item]});close();}catch(e){setError(e instanceof Error?e.message:'Could not save.');}}
- return <Modal title={entry?'Edit transaction':'A little spend, recorded'} close={close}><form onSubmit={submit} className="form-stack"><Field label="Type"><select value={kind} onChange={e=>setKind(e.target.value as Entry['kind'])}><option value="expense">Expense</option><option value="income">Income</option><option value="transfer">Transfer between my accounts</option></select></Field><div className="form-grid"><Field label="Amount (₹)"><input name="amount" type="number" min="0.01" step="0.01" defaultValue={entry?.amount} required placeholder="0"/></Field><Field label="Date"><input type="date" name="date" defaultValue={entry?.date??'2026-10-17'} required/></Field></div><Field label={kind==='expense'?'Category':'Source'}><select name="category" defaultValue={entry?.category}>{(kind==='expense'?categories:kind==='income'?['Monthly allowance','Family allowance','Scholarship','Part-time income','Other income']:['Savings transfer']).map(c=><option key={c}>{c}</option>)}</select></Field><Field label="Description"><input name="description" defaultValue={entry?.description} placeholder="Campus lunch, a bus pass…" maxLength={100}/></Field><label className="check-row"><input type="checkbox" name="recurring" defaultChecked={entry?.recurring}/>Recurring every month</label>{kind==='transfer'&&<p className="muted">Transfers do not change total income, expenses or savings.</p>}{error&&<p role="alert" className="alert">{error}</p>}<Button disabled={busy}>{busy?'Saving…':'Save transaction'}<Plus/></Button></form></Modal>;
+import { useState, type FormEvent } from "react";
+import { Plus, Pencil, Trash2, ArrowUpRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { usePenny } from "./store";
+import { categories, finance, money, type Entry } from "./logic";
+import { Modal, Field, PageHeading, IconAction, Empty } from "./ui";
+export function EntryModal({ close, entry }: { close: () => void; entry?: Entry | undefined }) {
+  const { account, update, busy } = usePenny();
+  const [kind, setKind] = useState(entry?.kind ?? "expense"),
+    [error, setError] = useState("");
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const amount = Number(fd.get("amount"));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Enter an amount greater than zero.");
+      return;
+    }
+    const item: Entry = {
+      id: entry?.id ?? crypto.randomUUID(),
+      amount,
+      category: String(fd.get("category")),
+      description: String(fd.get("description")),
+      date: String(fd.get("date")),
+      recurring: fd.get("recurring") === "on",
+      kind,
+    };
+    try {
+      await update({
+        ...account,
+        entries: entry
+          ? account.entries.map((x) => (x.id === entry.id ? item : x))
+          : [...account.entries, item],
+      });
+      close();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save.");
+    }
+  }
+  return (
+    <Modal title={entry ? "Edit transaction" : "A little spend, recorded"} close={close}>
+      <form onSubmit={submit} className="form-stack">
+        <Field label="Type">
+          <select value={kind} onChange={(e) => setKind(e.target.value as Entry["kind"])}>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="transfer">Transfer between my accounts</option>
+          </select>
+        </Field>
+        <div className="form-grid">
+          <Field label="Amount (₹)">
+            <input
+              name="amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              defaultValue={entry?.amount}
+              required
+              placeholder="0"
+            />
+          </Field>
+          <Field label="Date">
+            <input type="date" name="date" defaultValue={entry?.date ?? "2026-10-17"} required />
+          </Field>
+        </div>
+        <Field label={kind === "expense" ? "Category" : "Source"}>
+          <select name="category" defaultValue={entry?.category}>
+            {(kind === "expense"
+              ? categories
+              : kind === "income"
+                ? [
+                    "Monthly allowance",
+                    "Family allowance",
+                    "Scholarship",
+                    "Part-time income",
+                    "Other income",
+                  ]
+                : ["Savings transfer"]
+            ).map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Description">
+          <input
+            name="description"
+            defaultValue={entry?.description}
+            placeholder="Campus lunch, a bus pass…"
+            maxLength={100}
+          />
+        </Field>
+        <label className="check-row">
+          <input type="checkbox" name="recurring" defaultChecked={entry?.recurring} />
+          Recurring every month
+        </label>
+        {kind === "transfer" && (
+          <p className="muted">Transfers do not change total income, expenses or savings.</p>
+        )}
+        {error && (
+          <p role="alert" className="alert">
+            {error}
+          </p>
+        )}
+        <Button disabled={busy}>
+          {busy ? "Saving…" : "Save transaction"}
+          <Plus />
+        </Button>
+      </form>
+    </Modal>
+  );
 }
-export function MoneyPage(){const {account,update,busy}=usePenny();const [month,setMonth]=useState('2026-10'),[editing,setEditing]=useState<Entry|true|null>(null),[error,setError]=useState('');const f=finance(account.entries,account.profile.savings,month);async function remove(e:Entry){try{await update({...account,entries:account.entries.filter(x=>x.id!==e.id)});}catch(e){setError(e instanceof Error?e.message:'Could not delete');}}
- return <><PageHeading title="Every penny has a place." subtitle="Your allowance, your essentials, and the little things in between." action={<Button onClick={()=>setEditing(true)}><Plus/>Add transaction</Button>}/><div className="section-heading"><Field label="Your month"><input type="month" value={month} onChange={e=>setMonth(e.target.value)}/></Field></div><div className="overview-stats three">{[['Income',f.income],['Expenses',f.expenses],['Unspent balance',f.unspent]].map(([label,value])=><div className="stat-card" key={label}><span>{label}</span><strong>{money(Number(value))}</strong><small>{Number(value)<0?'Deficit — not counted as new savings':'Selected month only'}</small></div>)}</div><section className="records-section"><div className="section-heading"><h2>Your transactions</h2><span className="muted">Transfers are excluded from totals</span></div>{error&&<p className="alert">{error}</p>}<div className="table-scroll"><table><thead><tr><th>Transaction</th><th>Category</th><th>Date</th><th>Type</th><th>Amount</th><th>Actions</th></tr></thead><tbody>{account.entries.filter(e=>e.date.startsWith(month)).slice().reverse().map(e=><tr key={e.id}><td><strong>{e.description||e.category}</strong><small>{e.recurring?'Recurring':'One-time'}</small></td><td>{e.category}</td><td>{e.date}</td><td><span className={`tag ${e.kind==='income'?'mint':'lavender'}`}>{e.kind}</span></td><td className="amount">{money(e.amount)}</td><td><IconAction label="Edit transaction" onClick={()=>setEditing(e)}><Pencil size={15}/></IconAction><IconAction label="Delete transaction" onClick={()=>void remove(e)}><Trash2 size={15}/></IconAction></td></tr>)}</tbody></table></div>{!account.entries.some(e=>e.date.startsWith(month))&&<Empty title="A fresh month" description="Add your allowance and expenses to start your savings story."/>}</section><section className="category-section"><h2>Where your money goes</h2><div className="category-grid">{categories.map((c,i)=>{const total=account.entries.filter(e=>e.kind==='expense'&&e.date.startsWith(month)&&e.category===c).reduce((s,e)=>s+e.amount,0);return <div className="category-row" key={c}><span>{c}<strong>{money(total)}</strong></span><div className="progress"><span className={`dot-${i%5}`} style={{width:`${f.expenses?total/f.expenses*100:0}%`}}/></div></div>;})}</div></section>{editing&&<EntryModal close={()=>setEditing(null)} entry={editing===true?undefined:editing}/>}<Button variant="link" asChild disabled={busy}><a href="/savings">Set your protected savings <ArrowUpRight/></a></Button></>;
+export function MoneyPage() {
+  const { account, update, busy } = usePenny();
+  const [month, setMonth] = useState("2026-10"),
+    [editing, setEditing] = useState<Entry | true | null>(null),
+    [error, setError] = useState("");
+  const f = finance(account.entries, account.profile.savings, month);
+  async function remove(e: Entry) {
+    try {
+      await update({ ...account, entries: account.entries.filter((x) => x.id !== e.id) });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+  return (
+    <>
+      <PageHeading
+        title="Every penny has a place."
+        subtitle="Your allowance, your essentials, and the little things in between."
+        action={
+          <Button onClick={() => setEditing(true)}>
+            <Plus />
+            Add transaction
+          </Button>
+        }
+      />
+      <div className="section-heading">
+        <Field label="Your month">
+          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+        </Field>
+      </div>
+      <div className="overview-stats three">
+        {[
+          ["Income", f.income],
+          ["Expenses", f.expenses],
+          ["Unspent balance", f.unspent],
+        ].map(([label, value]) => (
+          <div className="stat-card" key={label}>
+            <span>{label}</span>
+            <strong>{money(Number(value))}</strong>
+            <small>
+              {Number(value) < 0 ? "Deficit — not counted as new savings" : "Selected month only"}
+            </small>
+          </div>
+        ))}
+      </div>
+      <section className="records-section">
+        <div className="section-heading">
+          <h2>Your transactions</h2>
+          <span className="muted">Transfers are excluded from totals</span>
+        </div>
+        {error && <p className="alert">{error}</p>}
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Transaction</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {account.entries
+                .filter((e) => e.date.startsWith(month))
+                .slice()
+                .reverse()
+                .map((e) => (
+                  <tr key={e.id}>
+                    <td>
+                      <strong>{e.description || e.category}</strong>
+                      <small>{e.recurring ? "Recurring" : "One-time"}</small>
+                    </td>
+                    <td>{e.category}</td>
+                    <td>{e.date}</td>
+                    <td>
+                      <span className={`tag ${e.kind === "income" ? "mint" : "lavender"}`}>
+                        {e.kind}
+                      </span>
+                    </td>
+                    <td className="amount">{money(e.amount)}</td>
+                    <td>
+                      <IconAction label="Edit transaction" onClick={() => setEditing(e)}>
+                        <Pencil size={15} />
+                      </IconAction>
+                      <IconAction label="Delete transaction" onClick={() => void remove(e)}>
+                        <Trash2 size={15} />
+                      </IconAction>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+        {!account.entries.some((e) => e.date.startsWith(month)) && (
+          <Empty
+            title="A fresh month"
+            description="Add your allowance and expenses to start your savings story."
+          />
+        )}
+      </section>
+      <section className="category-section">
+        <h2>Where your money goes</h2>
+        <div className="category-grid">
+          {categories.map((c, i) => {
+            const total = account.entries
+              .filter((e) => e.kind === "expense" && e.date.startsWith(month) && e.category === c)
+              .reduce((s, e) => s + e.amount, 0);
+            return (
+              <div className="category-row" key={c}>
+                <span>
+                  {c}
+                  <strong>{money(total)}</strong>
+                </span>
+                <div className="progress">
+                  <span
+                    className={`dot-${i % 5}`}
+                    style={{ width: `${f.expenses ? (total / f.expenses) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      {editing && (
+        <EntryModal close={() => setEditing(null)} entry={editing === true ? undefined : editing} />
+      )}
+      <Button variant="link" asChild disabled={busy}>
+        <a href="/savings">
+          Set your protected savings <ArrowUpRight />
+        </a>
+      </Button>
+    </>
+  );
 }
