@@ -1,0 +1,388 @@
+import { useState, type ReactNode, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
+import {
+  LayoutDashboard,
+  Wallet,
+  PiggyBank,
+  Compass,
+  Map,
+  CloudSun,
+  Backpack,
+  Settings,
+  ArrowUpRight,
+  Plus,
+  Bell,
+  ChevronRight,
+  X,
+  Plane,
+  LogOut,
+  Menu,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { usePenny } from "./store";
+import { finance, money, safeBudget } from "./logic";
+const nav = [
+  { to: "/", label: "Overview", icon: LayoutDashboard },
+  { to: "/money", label: "My Money", icon: Wallet },
+  { to: "/savings", label: "Savings Vault", icon: PiggyBank },
+  { to: "/discover", label: "Discover Trips", icon: Compass },
+  { to: "/trips", label: "My Trips", icon: Map },
+  { to: "/weather", label: "Weather & Best Time", icon: CloudSun },
+  { to: "/packing", label: "Packing Checklist", icon: Backpack },
+  { to: "/profile", label: "Profile & Settings", icon: Settings },
+] as const;
+export function Modal({
+  title,
+  children,
+  close,
+}: {
+  title: string;
+  children: ReactNode;
+  close: () => void;
+}) {
+  return (
+    <div className="modal-shade" onClick={close}>
+      <section
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="section-heading">
+          <h2>{title}</h2>
+          <Button variant="ghost" size="icon" onClick={close} aria-label="Close dialog">
+            <X />
+          </Button>
+        </div>
+        {children}
+      </section>
+    </div>
+  );
+}
+export function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+export function PageHeading({
+  eyebrow,
+  title,
+  subtitle,
+  action,
+}: {
+  eyebrow?: string;
+  title: string;
+  subtitle: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="page-heading">
+      <div>
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+        <h1>{title}</h1>
+        <p className="muted">{subtitle}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
+export function Shell({ children }: { children: ReactNode }) {
+  const { account, demo, user, logout, error, setError } = usePenny();
+  const [auth, setAuth] = useState(false),
+    [open, setOpen] = useState(false),
+    [notifications, setNotifications] = useState(false);
+  const f = finance(account.entries, account.profile.savings, "2026-10"),
+    safe = safeBudget(
+      f.savings,
+      account.profile.reserve,
+      account.profile.bills,
+      account.profile.willingness,
+    );
+  return (
+    <div className="app-layout">
+      <aside className={`sidebar ${open ? "mobile-open" : ""}`}>
+        <Link to="/" className="brand">
+          <span className="brand-icon">
+            <Plane size={22} />
+          </span>
+          <span>
+            Penny<span className="brand-two">2</span>Passport
+            <small>Save smart. Explore more.</small>
+          </span>
+        </Link>
+        <div className="sidebar-label">YOUR EVERYDAY, UPGRADED</div>
+        <nav>
+          {nav.map((n) => (
+            <Button key={n.to} variant="ghost" asChild className="nav-link">
+              <Link
+                to={n.to}
+                activeProps={{ className: "nav-link active" }}
+                activeOptions={{ exact: true }}
+                onClick={() => setOpen(false)}
+              >
+                <n.icon size={19} />
+                {n.label}
+                {n.to === "/discover" && <span className="new-label">NEW</span>}
+              </Link>
+            </Button>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="sidebar-fund">
+            <span>
+              <PiggyBank size={18} /> Your next adventure
+            </span>
+            <strong>{money(safe)}</strong>
+            <div className="progress">
+              <span style={{ width: `${Math.min(100, (safe / 5000) * 100)}%` }} />
+            </div>
+            <small>toward a ₹5,000 travel goal</small>
+            <Link to="/discover">
+              Let’s make it happen <ArrowUpRight size={16} />
+            </Link>
+          </div>
+          <div className="sidebar-user">
+            <span className="avatar">{account.profile.name.slice(0, 1).toUpperCase()}</span>
+            <div>
+              <strong>{account.profile.name}</strong>
+              <small>{demo ? "Demo explorer" : "Student explorer"}</small>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={user ? "Sign out" : "Sign in"}
+              title={user ? "Sign out" : "Sign in"}
+              onClick={() => (user ? void logout() : setAuth(true))}
+            >
+              <LogOut size={17} />
+            </Button>
+          </div>
+        </div>
+      </aside>
+      <div className="main-layout">
+        <header className="topbar">
+          <div className="topbar-breadcrumb">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mobile-menu"
+              onClick={() => setOpen(!open)}
+              aria-label="Open navigation"
+            >
+              <Menu />
+            </Button>
+            <span>Your student life</span>
+            <ChevronRight size={14} />
+            <strong>Your next adventure</strong>
+          </div>
+          <div className="topbar-actions">
+            <span className="month">October 2026</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Notifications"
+              onClick={() => setNotifications(true)}
+            >
+              <Bell size={19} />
+            </Button>
+            <Button variant="outline" onClick={() => setAuth(true)}>
+              {demo ? "Sign in" : account.profile.name}
+              <span className="avatar small">{account.profile.name.slice(0, 1)}</span>
+            </Button>
+          </div>
+        </header>
+        <main className="page-content">
+          {demo && (
+            <div className="demo-bar">
+              <span>
+                <span className="status-dot" />
+                Demo workspace · Sample finances from Pune
+              </span>
+              <Button variant="link" onClick={() => setAuth(true)}>
+                Save your own journey <ArrowUpRight size={14} />
+              </Button>
+            </div>
+          )}
+          {error && (
+            <div className="alert">
+              <span>{error}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setError("")}
+                aria-label="Dismiss message"
+              >
+                <X />
+              </Button>
+            </div>
+          )}
+          {children}
+          <footer className="page-footer">
+            <span>Little savings. Big possibilities.</span>
+            <span>
+              Penny2Passport <Plane size={14} />
+            </span>
+          </footer>
+        </main>
+      </div>
+      {auth && <AuthModal close={() => setAuth(false)} />}
+      {notifications && (
+        <Modal title="Your updates" close={() => setNotifications(false)}>
+          <p>
+            {safe > 0
+              ? `${money(safe)} is safely available for travel this month.`
+              : "Add your income and protect a reserve before planning a trip."}
+          </p>
+          <p className="muted">
+            {account.trips.length} saved trip{account.trips.length === 1 ? "" : "s"} in your travel
+            notebook.
+          </p>
+        </Modal>
+      )}
+    </div>
+  );
+}
+function AuthModal({ close }: { close: () => void }) {
+  const { authenticate, busy, user, logout } = usePenny();
+  const [mode, setMode] = useState("login"),
+    [message, setMessage] = useState("");
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const d = new FormData(e.currentTarget);
+    try {
+      await authenticate(
+        mode,
+        String(d.get("email")),
+        String(d.get("password") ?? ""),
+        String(d.get("name") ?? ""),
+      );
+      if (mode === "reset") setMessage("Password reset email requested. Check your inbox.");
+      else close();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Please try again.");
+    }
+  }
+  return (
+    <Modal
+      title={
+        user
+          ? "Your account"
+          : mode === "signup"
+            ? "Your next chapter starts here"
+            : mode === "reset"
+              ? "Reset your password"
+              : "Welcome back, explorer"
+      }
+      close={close}
+    >
+      {user ? (
+        <>
+          <p>Signed in as {user.email}</p>
+          <Button onClick={() => void logout().then(close)}>
+            Sign out <LogOut />
+          </Button>
+        </>
+      ) : (
+        <>
+          <p className="muted">Save smart. Explore more.</p>
+          <form onSubmit={submit} className="form-stack">
+            {mode === "signup" && (
+              <Field label="Full name">
+                <input name="name" required autoComplete="name" />
+              </Field>
+            )}
+            <Field label="Email">
+              <input type="email" name="email" required autoComplete="email" />
+            </Field>
+            {mode !== "reset" && (
+              <Field label="Password">
+                <input
+                  type="password"
+                  name="password"
+                  minLength={6}
+                  required
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                />
+              </Field>
+            )}
+            {message && (
+              <p role="status" className="alert">
+                {message}
+              </p>
+            )}
+            <Button disabled={busy}>
+              {busy
+                ? "Please wait…"
+                : mode === "signup"
+                  ? "Create account"
+                  : mode === "reset"
+                    ? "Send reset email"
+                    : "Sign in"}
+              <ArrowUpRight />
+            </Button>
+          </form>
+          <div className="auth-links">
+            <Button
+              variant="link"
+              onClick={() => {
+                setMode(mode === "signup" ? "login" : "signup");
+                setMessage("");
+              }}
+            >
+              {mode === "signup"
+                ? "Already have an account? Sign in"
+                : "New here? Create an account"}
+            </Button>
+            <Button
+              variant="link"
+              onClick={() => {
+                setMode("reset");
+                setMessage("");
+              }}
+            >
+              Forgot password?
+            </Button>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+export function IconAction({
+  label,
+  children,
+  onClick,
+}: {
+  label: string;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <Button variant="ghost" size="icon" title={label} aria-label={label} onClick={onClick}>
+      {children}
+    </Button>
+  );
+}
+export function Empty({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="empty">
+      <Compass size={32} />
+      <h3>{title}</h3>
+      <p className="muted">{description}</p>
+      {children}
+    </div>
+  );
+}
+export const AddIcon = Plus;

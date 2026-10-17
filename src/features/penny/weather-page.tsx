@@ -1,0 +1,137 @@
+import { useState, type FormEvent } from "react";
+import { Search, CloudSun, Droplets, Wind, ThermometerSun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PageHeading, Empty } from "./ui";
+import { usePenny } from "./store";
+import { forecast, geocode, conditions, type Location, type Forecast } from "./weather";
+export function WeatherPage() {
+  const { account } = usePenny();
+  const [city, setCity] = useState(account.profile.homeCity),
+    [location, setLocation] = useState<Location | null>(null),
+    [weather, setWeather] = useState<Forecast | null>(null),
+    [loading, setLoading] = useState(false),
+    [error, setError] = useState("");
+  async function search(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setWeather(null);
+    try {
+      const l = await geocode(city);
+      const w = await forecast(l.latitude, l.longitude);
+      setLocation(l);
+      setWeather(w);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Weather not available.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  const best = weather
+    ? weather.daily.time.reduce((best, _, i) => {
+        const score = (j: number) =>
+          (weather.daily.precipitation_probability_max[j] ?? 100) +
+          Math.abs((weather.daily.temperature_2m_max[j] ?? 25) - 25) * 2;
+        return score(i) < score(best) ? i : best;
+      }, 0)
+    : 0;
+  return (
+    <>
+      <PageHeading
+        title="A little sunshine in your plans."
+        subtitle="Check the real forecast before you chase that next adventure."
+      />
+      <form className="weather-search" onSubmit={search}>
+        <div>
+          <Search size={20} />
+          <input
+            aria-label="Search city weather"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Where are you headed?"
+            required
+          />
+        </div>
+        <Button disabled={loading}>
+          {loading ? "Checking weather…" : "Check forecast"}
+          <CloudSun />
+        </Button>
+      </form>
+      {error && (
+        <p className="alert" role="alert">
+          {error} Try searching again.
+        </p>
+      )}
+      {weather && location ? (
+        <>
+          <div className="weather-current">
+            <div>
+              <span className="eyebrow">OPEN-METEO · CURRENT CONDITIONS</span>
+              <h2>
+                {location.name}, {location.admin1 ?? location.country}
+              </h2>
+              <strong>
+                {weather.current.temperature_2m}°<CloudSun size={64} />
+              </strong>
+              <p>
+                {conditions(weather.current.weather_code)} · Observed{" "}
+                {weather.current.time.replace("T", " ")}
+              </p>
+            </div>
+            <div className="weather-metrics">
+              <p>
+                <ThermometerSun />
+                Feels like <strong>{weather.current.apparent_temperature}°C</strong>
+              </p>
+              <p>
+                <Droplets />
+                Humidity <strong>{weather.current.relative_humidity_2m}%</strong>
+              </p>
+              <p>
+                <Wind />
+                Wind <strong>{weather.current.wind_speed_10m} km/h</strong>
+              </p>
+            </div>
+          </div>
+          <section className="forecast-section">
+            <h2>The week ahead</h2>
+            <div className="forecast-grid">
+              {weather.daily.time.map((date, i) => (
+                <div className={`forecast-day ${i === best ? "best-day" : ""}`} key={date}>
+                  <span>
+                    {new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </span>
+                  <CloudSun size={28} />
+                  <strong>
+                    {weather.daily.temperature_2m_max[i]}° / {weather.daily.temperature_2m_min[i]}°
+                  </strong>
+                  <p>{conditions(weather.daily.weather_code[i] ?? 0)}</p>
+                  <small>
+                    <Droplets size={13} />
+                    {weather.daily.precipitation_probability_max[i]}% rain
+                  </small>
+                  {i === best && <span className="tag mint">Best upcoming day</span>}
+                </div>
+              ))}
+            </div>
+            <p className="muted">
+              {weather.daily.time[best]} has the lowest combined rain and temperature-discomfort
+              score in this forecast. It isn’t a guarantee; check conditions again before leaving.
+            </p>
+          </section>
+        </>
+      ) : (
+        !loading && (
+          <Empty
+            title="Good plans start with a weather check"
+            description="Search your home city or destination to see the current conditions and seven-day forecast."
+          />
+        )
+      )}
+    </>
+  );
+}
